@@ -1,18 +1,21 @@
 export type Priority = 'low' | 'medium' | 'high';
+export type Status = 'todo' | 'in-progress' | 'done';
 export type Label = 'bug' | 'feature' | 'documentation' | 'design' | 'enhancement';
 
 export interface Task {
   id: string;
   title: string;
   description: string;
-  dueDate: Date | null;
+  status: Status;
   priority: Priority;
-  labels: Label[];
+  labels?: Label[];
+  createdAt: Date;
 }
 
 export interface Column {
   id: string;
   title: string;
+  status: Status;
   tasks: Task[];
 }
 

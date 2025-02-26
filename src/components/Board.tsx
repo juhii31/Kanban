@@ -16,8 +16,12 @@ const Board: React.FC<BoardProps> = ({
   onDeleteTask, 
   onMoveTask 
 }) => {
-  const [editingTask, setEditingTask] = useState<{id: string, columnId: string} | null>(null);
-  
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  const priorities: Priority[] = ['low', 'medium', 'high'];
+  const labels: Label[] = ['bug', 'feature', 'documentation', 'design', 'enhancement'];
+
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, taskId: string, fromColumnId: string) => {
     e.dataTransfer.setData('taskId', taskId);
     e.dataTransfer.setData('fromColumnId', fromColumnId);
@@ -29,89 +33,98 @@ const Board: React.FC<BoardProps> = ({
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, toColumnId: string) => {
     e.preventDefault();
-    try {
-      const taskId = e.dataTransfer.getData('taskId');
-      const fromColumnId = e.dataTransfer.getData('fromColumnId');
-      
-      if (!taskId || !fromColumnId) {
-        console.error('Missing drag data');
-        return;
-      }
-      
-      if (fromColumnId !== toColumnId) {
-        onMoveTask(taskId, fromColumnId, toColumnId);
-      }
-    } catch (error) {
-      console.error('Error during drag and drop:', error);
+    const taskId = e.dataTransfer.getData('taskId');
+    const fromColumnId = e.dataTransfer.getData('fromColumnId');
+    
+    if (fromColumnId !== toColumnId) {
+      onMoveTask(taskId, fromColumnId, toColumnId);
     }
   };
 
-  const priorities: Priority[] = ['low', 'medium', 'high'];
-  const labels: Label[] = ['bug', 'feature', 'documentation', 'design', 'enhancement'];
+  const renderTask = (task: Task, columnId: string) => {
+    const isEditing = editingTaskId === task.id;
 
-  const getPriorityColor = (priority: Priority): string => {
-    switch (priority) {
-      case 'high': return '#dc3545';
-      case 'medium': return '#ffc107';
-      case 'low': return '#28a745';
-      default: return '#6c757d';
-    }
-  };
-
-  const renderTask = (task: Task, columnId: string): JSX.Element => {
-    const isEditing = editingTask?.id === task.id;
-
-    if (isEditing) {
+    if (isEditing && editingTask) {
       return (
-        <div className="task task-edit" key={task.id}>
-          <input
-            type="text"
-            value={task.title}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-              onEditTask(columnId, task.id, { title: e.target.value })}
-          />
-          <textarea
-            value={task.description}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => 
-              onEditTask(columnId, task.id, { description: e.target.value })}
-            placeholder="Description"
-          />
-          <div className="task-edit-controls">
+        <div key={task.id} className="task editing">
+          <div className="edit-section">
+            <label>Title:</label>
+            <input
+              type="text"
+              value={editingTask.title}
+              onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
+              placeholder="Task title"
+            />
+          </div>
+
+          <div className="edit-section">
+            <label>Description:</label>
+            <textarea
+              value={editingTask.description}
+              onChange={(e) => setEditingTask({ ...editingTask, description: e.target.value })}
+              placeholder="Task description"
+            />
+          </div>
+
+          <div className="edit-section">
+            <label>Priority:</label>
             <select
-              value={task.priority}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => 
-                onEditTask(columnId, task.id, { priority: e.target.value as Priority })}
+              value={editingTask.priority}
+              onChange={(e) => setEditingTask({ ...editingTask, priority: e.target.value as Priority })}
             >
               {priorities.map(priority => (
-                <option key={priority} value={priority}>{priority}</option>
+                <option key={priority} value={priority}>
+                  {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                </option>
               ))}
             </select>
-            <select
-              multiple
-              value={task.labels}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                const options = e.target.selectedOptions;
-                const selectedLabels: Label[] = [];
-                for (let i = 0; i < options.length; i++) {
-                  const value = options[i].value as Label;
-                  selectedLabels.push(value);
-                }
-                onEditTask(columnId, task.id, { labels: selectedLabels });
-              }}
-            >
+          </div>
+
+          <div className="edit-section">
+            <label>Labels:</label>
+            <div className="label-checkboxes">
               {labels.map(label => (
-                <option key={label} value={label}>{label}</option>
+                <label key={label} className="label-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={editingTask.labels?.includes(label) || false}
+                    onChange={(e) => {
+                      const newLabels = e.target.checked
+                        ? [...(editingTask.labels || []), label]
+                        : (editingTask.labels || []).filter(l => l !== label);
+                      setEditingTask({ ...editingTask, labels: newLabels });
+                    }}
+                  />
+                  <span className="label" data-label={label}>
+                    {label.charAt(0).toUpperCase() + label.slice(1)}
+                  </span>
+                </label>
               ))}
-            </select>
-            <input
-              type="date"
-              value={task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ''}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-                onEditTask(columnId, task.id, { 
-                  dueDate: e.target.value ? new Date(e.target.value) : null 
-                })}
-            />
-            <button onClick={() => setEditingTask(null)}>Save</button>
+            </div>
+          </div>
+
+          <div className="task-edit-controls">
+            <div className="button-group">
+              <button 
+                className="save-button" 
+                onClick={() => {
+                  onEditTask(columnId, task.id, editingTask);
+                  setEditingTaskId(null);
+                  setEditingTask(null);
+                }}
+              >
+                💾 Save Changes
+              </button>
+              <button 
+                className="cancel-button" 
+                onClick={() => {
+                  setEditingTaskId(null);
+                  setEditingTask(null);
+                }}
+              >
+                ❌ Cancel
+              </button>
+            </div>
           </div>
         </div>
       );
@@ -120,35 +133,47 @@ const Board: React.FC<BoardProps> = ({
     return (
       <div
         key={task.id}
-        className="task"
+        className={`task priority-${task.priority}`}
         draggable
-        onDragStart={(e: React.DragEvent<HTMLDivElement>) => handleDragStart(e, task.id, columnId)}
+        onDragStart={(e) => handleDragStart(e, task.id, columnId)}
       >
         <div className="task-header">
           <h3>{task.title}</h3>
           <div className="task-actions">
-            <button onClick={() => setEditingTask({ id: task.id, columnId })}>Edit</button>
-            <button onClick={() => onDeleteTask(columnId, task.id)}>Delete</button>
+            <button 
+              className="edit-button" 
+              onClick={() => {
+                setEditingTaskId(task.id);
+                setEditingTask({ ...task });
+              }}
+            >
+              ✏️ Edit
+            </button>
+            <button 
+              className="delete-button" 
+              onClick={() => onDeleteTask(columnId, task.id)}
+            >
+              🗑️ Delete
+            </button>
           </div>
         </div>
         <p>{task.description}</p>
-        <div className="task-metadata">
-          <div 
-            className="priority-indicator"
-            style={{ backgroundColor: getPriorityColor(task.priority) }}
-          >
-            {task.priority}
-          </div>
+        {task.labels && task.labels.length > 0 && (
           <div className="labels">
             {task.labels.map(label => (
-              <span key={label} className="label">{label}</span>
+              <span key={label} className="label" data-label={label}>
+                {label.charAt(0).toUpperCase() + label.slice(1)}
+              </span>
             ))}
           </div>
-          {task.dueDate && (
-            <div className="due-date">
-              Due: {new Date(task.dueDate).toLocaleDateString()}
-            </div>
-          )}
+        )}
+        <div className="task-footer">
+          <span className={`priority priority-${task.priority}`}>
+            {task.priority}
+          </span>
+          <span className="date">
+            {new Date(task.createdAt).toLocaleDateString()}
+          </span>
         </div>
       </div>
     );
@@ -163,11 +188,15 @@ const Board: React.FC<BoardProps> = ({
           onDragOver={handleDragOver}
           onDrop={(e) => handleDrop(e, column.id)}
         >
-          <h2>{column.title}</h2>
+          <div className="column-header">
+            <h2>{column.title}</h2>
+            <span className="task-count">({column.tasks.length})</span>
+          </div>
           <div className="tasks">
             {column.tasks.map(task => renderTask(task, column.id))}
           </div>
           <button
+            className="add-task-button"
             onClick={() => {
               const title = window.prompt('Enter task title:');
               if (title) onAddTask(column.id, title);

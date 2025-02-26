@@ -10,6 +10,32 @@ const TaskFilter: React.FC<TaskFilterProps> = ({ filter, onFilterChange }) => {
   const priorities: Priority[] = ['low', 'medium', 'high'];
   const labels: Label[] = ['bug', 'feature', 'documentation', 'design', 'enhancement'];
 
+  const handlePriorityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value as Priority | '';
+    console.log('[FILTER] Setting priority filter:', value || 'none');
+    onFilterChange({
+      ...filter,
+      priority: value || null,
+    });
+  };
+
+  const handleLabelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value as Label | '';
+    console.log('[FILTER] Setting label filter:', value || 'none');
+    onFilterChange({
+      ...filter,
+      label: value || null,
+    });
+  };
+
+  const clearFilters = () => {
+    console.log('[FILTER] Clearing all filters');
+    onFilterChange({
+      priority: null,
+      label: null,
+    });
+  };
+
   return (
     <div className="task-filter">
       <div className="filter-group">
@@ -17,15 +43,12 @@ const TaskFilter: React.FC<TaskFilterProps> = ({ filter, onFilterChange }) => {
           Priority:
           <select
             value={filter.priority || ''}
-            onChange={(e) => onFilterChange({
-              ...filter,
-              priority: e.target.value as Priority || null,
-            })}
+            onChange={handlePriorityChange}
           >
-            <option value="">All</option>
+            <option value="">Show All Priorities</option>
             {priorities.map(priority => (
               <option key={priority} value={priority}>
-                {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                Show {priority.charAt(0).toUpperCase() + priority.slice(1)} Priority Only
               </option>
             ))}
           </select>
@@ -37,20 +60,26 @@ const TaskFilter: React.FC<TaskFilterProps> = ({ filter, onFilterChange }) => {
           Label:
           <select
             value={filter.label || ''}
-            onChange={(e) => onFilterChange({
-              ...filter,
-              label: e.target.value as Label || null,
-            })}
+            onChange={handleLabelChange}
           >
-            <option value="">All</option>
+            <option value="">Show All Labels</option>
             {labels.map(label => (
               <option key={label} value={label}>
-                {label.charAt(0).toUpperCase() + label.slice(1)}
+                Show {label.charAt(0).toUpperCase() + label.slice(1)} Only
               </option>
             ))}
           </select>
         </label>
       </div>
+
+      {(filter.priority || filter.label) && (
+        <button 
+          onClick={clearFilters}
+          className="clear-filters-button"
+        >
+          Clear Filters
+        </button>
+      )}
     </div>
   );
 };
